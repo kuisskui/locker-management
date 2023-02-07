@@ -8,7 +8,15 @@ import os
 import urllib
 from dotenv import load_dotenv
 
-load_dotenv('.env')
+load_dotenv('sample.env')
+
+# {
+#     "id" : "2",
+#     "items" : ["key"],
+#     "user_id" : 0,
+#     "start" : "2000-01-01 00:00:00",
+#     "end" : "2000-01-01 00:00:00"
+# }
 
 DATABASE_NAME = "exceed01"
 COLLECTION_NAME = "locket-management"
@@ -25,7 +33,6 @@ class Locker(BaseModel):
     start: datetime
     end: datetime
 
-
 client = MongoClient(f"{MONGO_DB_URL}:{MONGO_DB_PORT}/?authMechanism=DEFAULT")
 
 db = client[DATABASE_NAME]
@@ -34,18 +41,17 @@ collection = db[COLLECTION_NAME]
 
 app = FastAPI()
 
-
 @app.get("/")
 def root():
     return {"msg": "pick a locker"}
 
 
 @app.get("/{locker_id}/")
-def locker():
+def locker(locker_id):
     '''
     show a locker
     '''
-    return {"msg": "test"}
+    return collection.find({"id": locker_id})
 
 
 @app.post("/{locker_id}/reserve/")
@@ -53,22 +59,29 @@ def reserve(locker_id: int, locker: Locker):
     '''
     จอง
     '''
+    collection.update_one({"id": locker_id}, {"$set": {"user_id": locker.id, "items": locker.items,"start": locker.start, "end": locker.end}}, upsert=True)
     return {"Item id": locker_id}
+    # return {"Item id": locker_id,"test1": locker.id, "test2": locker.items,"test3":locker.start}
 
 
 @app.post("/{locker_id}/return_item")
-def return_item():
+def return_item(locker_id):
     '''
     return Item
     '''
-    pass
-
+    collection.update_one({"id":locker_id}, {"$set": {"user_id": "", "items": {},"start": "", "end": ""}}, upsert=True)
+    return collection.find({"id": locker_id}, {"_id": False})
+    
 
 @app.get("/{locker_id}/return_item/payment/")
 def payment():
     '''
     '''
     pass
+    # > 2 hours + 5*time(h)
+    # จ่ายเงินเกิน > เงินทอน
+    # กเิน ค่าปรับ 10 min 20 baht
+    
 
 
 if __name__ == "__main__":
