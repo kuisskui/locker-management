@@ -25,7 +25,11 @@ def locker():
     '''
     show a locker
     '''
-    return {"msg": "test"}
+    information = collection.find()
+    locker = {}
+    for key, value in information.items():
+        locker[key] = value
+    return locker
 
 @app.post("/{locker_id}/reserve/")
 def reserve(locker_id: int, locker: Locker):
