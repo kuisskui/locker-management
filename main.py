@@ -3,7 +3,7 @@ import uvicorn
 from typing import Union, Optional, List
 from pydantic import BaseModel
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import urllib
 from dotenv import load_dotenv
@@ -17,7 +17,7 @@ password = urllib.parse.quote(os.getenv('password'))
 MONGO_DB_URL = f"mongodb://{username}:{password}@mongo.exceed19.online"
 MONGO_DB_PORT = 8443
 
-FORMAT_DATETIME = "%y/%m/%d %H:%M"
+FORMAT_DATETIME = "%Y/%m/%d %H:%M"
 
 
 class Locker(BaseModel):
@@ -69,31 +69,32 @@ def return_item(locker_id: str, itm: Item):
     '''
     return Item
     '''
-    print(itm.user_id)
+    fee = 0
+    late_fee = 0
 
     info = collection.find({"user_id": str(itm.user_id)}, {"_id": False})
-    print(info)
     var = list(info)[0]
     receive_date = datetime.now()
     end_date = var['end']
     start_date = var['start']
-    print(start_date, end_date)
     start_obj = datetime.strptime(start_date, FORMAT_DATETIME)
     end_obj = datetime.strptime(end_date, FORMAT_DATETIME)
     duration = end_obj - start_obj
-    receive_duration = end_obj - receive_date
-    if duration < receive_duration:
-        pass
-    if receive_duration > datetime.timestamp:
-        pass
-    return {"Change": receive_duration, "amount": itm.amount}
 
+    receive_duration = receive_date - start_obj
 
-@app.get("/{locker_id}/return_item/payment/")
-def payment():
-    '''
-    '''
-    pass
+    num_late = (receive_date - end_obj) / timedelta(minutes=60)
+    num_duration = duration / timedelta(minutes=60)
+    num_receive = receive_duration / timedelta(minutes=60)
+    if num_late > 0:
+        late_fee += (round(num_late*60)/10)*10
+    if num_duration > 2:
+        fee += (round(num_duration)-2)*5
+    if num_receive < 2:
+        change = 0
+
+    change = itm.amount - fee - late_fee
+    return {"Change": change, "amount": itm.amount}
 
 
 if __name__ == "__main__":
