@@ -8,7 +8,7 @@ import os
 import urllib
 from dotenv import load_dotenv
 
-load_dotenv('sample.env')
+load_dotenv('.env')
 
 # {
 #     "id" : "2",
@@ -21,8 +21,8 @@ load_dotenv('sample.env')
 DATABASE_NAME = "exceed01"
 COLLECTION_NAME = "locker-management"
 username = os.getenv("user")
-password = urllib.parse.quote(os.getenv('password'))
-MONGO_DB_URL = f"mongodb://{username}:{urllib.parse.quote(password)}@mongo.exceed19.online"
+password = os.getenv('password')
+MONGO_DB_URL = f"mongodb://{username}:{password}@mongo.exceed19.online"
 MONGO_DB_PORT = 8443
 
 FORMAT_DATETIME = "%Y/%m/%d %H:%M"
@@ -68,12 +68,13 @@ def locker(locker_id: str):
     return dict_info
 
 @app.post("/{locker_id}/reserve/")
-def reserve(locker_id: int, locker: Locker):
+def reserve(locker_id: str, user_id: str = Body(), items: List = Body(), start: str = Body(), end: str = Body()):
     '''
     จอง
     '''
-    collection.update_one({"id": locker_id}, {"$set": {"user_id": locker.id, "items": locker.items,"start": locker.start, "end": locker.end}}, upsert=True)
-    return {"Item id": locker_id}
+    print(user_id, items)
+    collection.update_one({"id": locker_id}, {"$set": {"user_id": user_id, "items": items,"start": start, "end": end}})
+    return {"message": "reserved"}
     # return {"Item id": locker_id,"test1": locker.id, "test2": locker.items,"test3":locker.start}
 
 
@@ -97,5 +98,5 @@ def payment():
     
 
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8080, reload=True)
+# if __name__ == "__main__":
+#     uvicorn.run(app, host="127.0.0.1", port=8080, reload=True)
