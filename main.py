@@ -11,11 +11,13 @@ from dotenv import load_dotenv
 load_dotenv('.env')
 
 DATABASE_NAME = "exceed01"
-COLLECTION_NAME = "locket-management"
+COLLECTION_NAME = "locker-management"
 username = os.getenv("user")
 password = urllib.parse.quote(os.getenv('password'))
 MONGO_DB_URL = f"mongodb://{username}:{password}@mongo.exceed19.online"
 MONGO_DB_PORT = 8443
+
+FORMAT_DATETIME = "%y/%m/%d %H:%M"
 
 
 class Locker(BaseModel):
@@ -24,6 +26,11 @@ class Locker(BaseModel):
     items: List[str]
     start: datetime
     end: datetime
+
+
+class Item(BaseModel):
+    user_id: Union[int, str]
+    amount: int
 
 
 client = MongoClient(f"{MONGO_DB_URL}:{MONGO_DB_PORT}/?authMechanism=DEFAULT")
@@ -53,15 +60,33 @@ def reserve(locker_id: int, locker: Locker):
     '''
     จอง
     '''
+
     return {"Item id": locker_id}
 
 
-@app.post("/{locker_id}/return_item")
-def return_item():
+@app.post("/{locker_id}/return_item/")
+def return_item(locker_id: str, itm: Item):
     '''
     return Item
     '''
-    pass
+    print(itm.user_id)
+
+    info = list(collection.find({"user_id": str(itm.user_id)}, {"_id": False}))
+    print(info)
+    var = info[0]
+    receive_date = datetime.now()
+    end_date = var['end']
+    start_date = var['start']
+    print(start_date, end_date)
+    # start_obj = start_date.strptime(start_date, FORMAT_DATETIME)
+    # end_obj = end_date.strptime(end_date, FORMAT_DATETIME)
+    duration = end_date - start_date
+    receive_duration = end_date - receive_date
+    if duration < receive_duration:
+        pass
+    if receive_duration > datetime.timestamp:
+        pass
+    return {"Change": receive_duration, "amount": itm.amount}
 
 
 @app.get("/{locker_id}/return_item/payment/")
