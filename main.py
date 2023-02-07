@@ -3,7 +3,7 @@ import uvicorn
 from typing import Union, Optional, List
 from pydantic import BaseModel
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import urllib
 from dotenv import load_dotenv
@@ -11,12 +11,13 @@ from dotenv import load_dotenv
 load_dotenv('.env')
 
 DATABASE_NAME = "exceed01"
-COLLECTION_NAME = "locket-management"
+COLLECTION_NAME = "locker-management"
 username = os.getenv("user")
 password = urllib.parse.quote(os.getenv('password'))
-MONGO_DB_URL = f"mongodb://{username}:{password}@mongo.exceed19.online"
+MONGO_DB_URL = f"mongodb://{username}:{urllib.parse.quote(password)}@mongo.exceed19.online"
 MONGO_DB_PORT = 8443
 
+FORMAT_DATETIME = "%Y/%m/%d %H:%M"
 
 class Locker(BaseModel):
     id: Union[int, str]
@@ -40,16 +41,25 @@ def root():
     return {"msg": "pick a locker"}
 
 
-@app.get("/{locker_id}/")
-def locker():
+@app.get("/lockerId/{locker_id}")
+def locker(locker_id: str):
     '''
     show a locker
     '''
-    information = collection.find()
-    locker = {}
-    for key, value in information.items():
-        locker[key] = value
-    return locker
+    information = collection.find({"id": locker_id}, {"_id": False})
+    
+    var = list(information)[0]
+    print(var)
+    
+    start_string = var["start"]
+    end_string = var["end"]
+    start_object = datetime.strptime(start_string, FORMAT_DATETIME)
+    now_object = datetime.now()
+    end_object = datetime.strptime(end_string, FORMAT_DATETIME)
+    duration = (end_object - now_object) / timedelta(seconds=60)
+
+    dict_info = {f"Locker": var["id"], "duration": duration}
+    return dict_info
 
 
 @app.post("/{locker_id}/reserve/")
@@ -76,4 +86,4 @@ def payment():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8080)
+    uvicorn.run(app, host="127.0.0.1", port=8080, reload=True)
