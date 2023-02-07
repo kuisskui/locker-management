@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, HTTPException
 import uvicorn
 from typing import Union, Optional, List
 from pydantic import BaseModel
@@ -72,8 +72,11 @@ def return_item(locker_id: str, itm: Item):
     fee = 0
     late_fee = 0
 
-    info = collection.find({"user_id": str(itm.user_id)}, {"_id": False})
-    var = list(info)[0]
+    try:
+        info = collection.find({"user_id": str(itm.user_id)}, {"_id": False})
+        var = list(info)[0]
+    except Exception:
+        raise HTTPException(500, "user_id not found")
     receive_date = datetime.now()
     end_date = var['end']
     start_date = var['start']
@@ -92,7 +95,9 @@ def return_item(locker_id: str, itm: Item):
 
     change = itm.amount - fee - late_fee
     if change < 0:
-        return {"Change": "Not enough amount, total is:"+ fee + late_fee}
+        raise HTTPException(
+            500, "Not enough amount, total is: " + str(fee + late_fee))
+        # return {"Change": "Not enough amount, total is: " + fee + late_fee}
     return {"Change": change}
 
 
