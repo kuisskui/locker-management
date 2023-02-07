@@ -79,22 +79,21 @@ def return_item(locker_id: str, itm: Item):
     start_date = var['start']
     start_obj = datetime.strptime(start_date, FORMAT_DATETIME)
     end_obj = datetime.strptime(end_date, FORMAT_DATETIME)
-    duration = end_obj - start_obj
 
-    receive_duration = receive_date - start_obj
+    reserve_time = (end_obj - start_obj).seconds
+    receive_time = (end_obj - datetime.now()).seconds
 
-    num_late = (receive_date - end_obj) / timedelta(minutes=60)
-    num_duration = duration / timedelta(minutes=60)
-    num_receive = receive_duration / timedelta(minutes=60)
-    if num_late > 0:
-        late_fee += (round(num_late*60)/10)*10
-    if num_duration > 2:
-        fee += (round(num_duration)-2)*5
-    if num_receive < 2:
+    if receive_date > end_obj:
+        late_fee = (round(receive_time/60/60/10))*20
+    if reserve_time/60/60 > 2:
+        fee = (round(reserve_time/60/60)-2)*5
+    if receive_time/60/60 < 2:
         change = 0
 
     change = itm.amount - fee - late_fee
-    return {"Change": change, "amount": itm.amount}
+    if change < 0:
+        return {"Change": "Not enough amount, total is:"+ fee + late_fee}
+    return {"Change": change}
 
 
 if __name__ == "__main__":
