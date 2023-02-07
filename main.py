@@ -86,6 +86,7 @@ def return_item(locker_id: str, itm: Item):
     reserve_time = (end_obj - start_obj).seconds
     receive_time = (end_obj - datetime.now()).seconds
 
+    # condition
     if receive_date > end_obj:
         late_fee = (round(receive_time/60/60/10))*20
     if reserve_time/60/60 > 2:
@@ -97,7 +98,8 @@ def return_item(locker_id: str, itm: Item):
     if change < 0:
         raise HTTPException(
             500, "Not enough amount, total is: " + str(fee + late_fee))
-        # return {"Change": "Not enough amount, total is: " + fee + late_fee}
+    # update locker to default.
+    collection.update_one({"id":locker_id}, {"$set": {"user_id": "", "items": {},"start": "", "end": ""}}, upsert=True)
     return {"Change": change}
 
 
