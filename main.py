@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, HTTPException
 import uvicorn
 from typing import Union, Optional, List
 from pydantic import BaseModel
@@ -33,6 +33,12 @@ class Locker(BaseModel):
     items: List[str]
     start: datetime
     end: datetime
+
+
+class Item(BaseModel):
+    user_id: Union[int, str]
+    amount: int
+
 
 client = MongoClient(f"{MONGO_DB_URL}:{MONGO_DB_PORT}/?authMechanism=DEFAULT")
 
@@ -75,27 +81,45 @@ def reserve(locker_id: str, user_id: str = Body(), items: List = Body(), start: 
     print(user_id, items)
     collection.update_one({"id": locker_id}, {"$set": {"user_id": user_id, "items": items,"start": start, "end": end}})
     return {"message": "reserved"}
-    # return {"Item id": locker_id,"test1": locker.id, "test2": locker.items,"test3":locker.start}
 
 
-@app.post("/{locker_id}/return_item")
-def return_item(locker_id):
+@app.post("/{locker_id}/return_item/")
+def return_item(locker_id: str, itm: Item):
     '''
     return Item
     '''
-    collection.update_one({"id":locker_id}, {"$set": {"user_id": "", "items": {},"start": "", "end": ""}}, upsert=True)
-    return collection.find({"id": locker_id}, {"_id": False})
-    
+    fee = 0
+    late_fee = 0
 
-@app.get("/{locker_id}/return_item/payment/")
-def payment():
-    '''
-    '''
-    pass
-    # > 2 hours + 5*time(h)
-    # จ่ายเงินเกิน > เงินทอน
-    # กเิน ค่าปรับ 10 min 20 baht
-    
+    try:
+        info = collection.find({"user_id": str(itm.user_id)}, {"_id": False})
+        var = list(info)[0]
+    except Exception:
+        raise HTTPException(500, "user_id not found")
+    receive_date = datetime.now()
+    end_date = var['end']
+    start_date = var['start']
+    start_obj = datetime.strptime(start_date, FORMAT_DATETIME)
+    end_obj = datetime.strptime(end_date, FORMAT_DATETIME)
+
+    reserve_time = (end_obj - start_obj).seconds
+    receive_time = (end_obj - datetime.now()).seconds
+
+    # condition
+    if receive_date > end_obj:
+        late_fee = (round(receive_time/60/60/10))*20
+    if reserve_time/60/60 > 2:
+        fee = (round(reserve_time/60/60)-2)*5
+    if receive_time/60/60 < 2:
+        change = 0
+
+    change = itm.amount - fee - late_fee
+    if change < 0:
+        raise HTTPException(
+            500, "Not enough amount, total is: " + str(fee + late_fee))
+    # update locker to default.
+    collection.update_one({"id":locker_id}, {"$set": {"user_id": "", "items": {},"start": "", "end": ""}}, upsert=True)
+    return {"Change": change}
 
 
 # if __name__ == "__main__":
